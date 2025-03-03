@@ -99,7 +99,7 @@ User table 就是很基本的註冊時必填的資料，pass 是 hash 過的 pas
 
 ## How To Scale Up
 
-假設此電商系統未來會面臨龐大流量，甚至有可能會轉為 C2C 的形式讓使用者自行上架、管理商品，此時這個架構就會面臨巨大的挑戰。以下是我試想的幾個挑戰：
+假設此電商系統未來會面臨龐大流量，甚至有可能會轉為 C2C 的形式讓使用者自行上架、管理商品，此時這個架構就會面臨巨大的挑戰。以下是我試想的挑戰：
 
 ### 雙 11 或熱門商品上架引起的瞬發巨大流量
 
@@ -111,5 +111,11 @@ User table 就是很基本的註冊時必填的資料，pass 是 hash 過的 pas
    2. 資料庫效能問題
       * 根據此系統，新增一個訂單至少需要涉及 3 個 table 的操作，這還不包括檢查庫存的操作。而為了保證此流程的安全性，是必得使用交易來處理，因此減少此一流程涉及的 table 數量不僅能降低死鎖發生的機率還能提高效能。
       * 可以將 Order_Item_Meta 整併進 Order_Item，雖然降低了欄位變動的靈活性，但減少了很多 insert 操作
-      * Order_Item 改以 OrderId + OrderItemId 作為 PK 並移除 OrderId 的 index，減少在 insert 時多維護一組 index 的效能犧牲
+      * Order_Item 改以 OrderId + OrderItemId 作為 PK 並移除 OrderId 的 index，加速查詢效能(節省用index二次查找的時間)，也降低因高併發造成以 order_item_id 作為 PK 時亂序造成同一 OrderId 的資料碎片化的問題
+2. 大量用戶湧入， session 讀寫效能問題
+   1. 資料庫效能問題
+      * 目前架構 session 只有一張表，所有用戶 session 的讀寫都在這張表上會造成效能問題。這種有時效性的資料最適合放在 redis 上，減少對 disk 的讀寫
+      * 倘若仍要採用 SQL 讀寫的話，可以依據 user id 做 partition(例如 mod 10)，降低對單個表的讀寫
+
+
 
